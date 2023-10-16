@@ -6,7 +6,7 @@
 	 * @f: pointer to function
 	 * Return: nothing
 	 **/
-	int void print_name(char *name, void (*f)(char *))
+	void print_name(char *name, void (*f)(char *))
 	{
 		if (name == NULL || f == NULL)
 			return;
