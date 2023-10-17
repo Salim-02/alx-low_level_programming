@@ -42,10 +42,12 @@ void print_all(const char * const format, ...)
 					break;
 				default:
 					i++;
-				continue;
+					continue;
 			}
 			sep = ", ";
 			i++;
 		}
-		printf("\n");
-		va_end(list);
+	}
+	printf("\n");
+	va_end(list);
+}
