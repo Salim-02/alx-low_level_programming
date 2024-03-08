@@ -1,103 +1,115 @@
-#include "main.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-char *create_buffer(char *file);
+#define BUFFER_SIZE 1024
+
+char *create_buffer(void);
 void close_file(int fd);
 
 /**
- * creates_buffer - Allocates 1024 bytes for a buffer.
- * @file: The name of the file buffer is storing chars for.
+ * create_buffer - Allocates memory for a buffer.
  *
  * Return: A pointer to the newly-allocated buffer.
  */
-char *creates_buffer(char *file)
+char *create_buffer(void)
 {
-	char *buffer;
-
-	buffer = malloc(sizeof(char) * 1024);
-
-	if (buffer == NULL)
-	{
-		dprintf(STDERR_FILENO,
-			"Error: Can't write to %s\n", file);
-		exit(99);
-	}
-
-	return (buffer);
+    char *buffer = malloc(BUFFER_SIZE);
+    if (buffer == NULL)
+    {
+        perror("Error allocating memory");
+        exit(EXIT_FAILURE);
+    }
+    return buffer;
 }
 
 /**
- * close_file - Closes file descriptors.
- * @fd: The file descriptor to be closed.
+ * close_file - Closes a file descriptor.
+ * @fd: The file descriptor to close.
  */
 void close_file(int fd)
 {
-	int c;
-
-	c = close(fd);
-
-	if (c == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Can't close fd %d\n", fd);
-		exit(100);
-	}
+    if (close(fd) == -1)
+    {
+        perror("Error closing file");
+        exit(EXIT_FAILURE);
+    }
 }
 
 /**
- * main - Copies the contents of a file to another file.
- * @argc: The number of arguments supplied to the program.
- * @argv: An array of pointers to the arguments.
+ * main - Copies the contents of one file to another.
+ * @argc: The number of command-line arguments.
+ * @argv: An array containing the command-line arguments.
  *
- * Return: 0 on success.
- *
- * Description: If the argument count is incorrect - exit code 97.
- * If file_from does not exist or cannot be read - exit code 98.
- * If file_to cannot be created or written to - exit code 99.
- * If file_to or file_from cannot be closed - exit code 100.
+ * Return: 0 on success, otherwise 1!
  */
 int main(int argc, char *argv[])
 {
-	int from, to, r, w;
-	char *buffer;
+    int from, to;
+    ssize_t bytes_read, bytes_written;
+    char *buffer;
 
-	if (argc != 3)
-	{
-		dprintf(STDERR_FILENO, "Usage: cp file_from file_to\n");
-		exit(97);
-	}
+    // Check for correct number of arguments
+    if (argc != 3)
+    {
+	    fprintf(stderr, "Usage: %s <source_file> <destination_file>\n", argv[0]);
+	exit(EXIT_FAILURE);
+    }
 
-	buffer = create_buffer(argv[2]);
-	from = open(argv[1], O_RDONLY);
-	r = read(from, buffer, 1024);
-	to = open(argv[2], O_CREAT | O_WRONLY | O_TRUNC, 0664);
+    // Allocate memory for buffer
+    buffer = create_buffer();
 
-	do {
-		if (from == -1 || r == -1)
-		{
-			dprintf(STDERR_FILENO,
-				"Error: Can't read from file %s\n", argv[1]);
-			free(buffer);
-			exit(98);
-		}
+	// Open source file for reading
+from = open(argv[1], O_RDONLY);
+    if (from == -1)
+    {
+	    perror("Error opening source file");
+	free(buffer);
+	exit(EXIT_FAILURE);
+    }
 
-		w = write(to, buffer, r);
-		if (to == -1 || w == -1)
-		{
-			dprintf(STDERR_FILENO,
-				"Error: Can't write to %s\n", argv[2]);
-			free(buffer);
-			exit(99);
-		}
-
-		r = read(from, buffer, 1024);
-		to = open(argv[2], O_WRONLY | O_APPEND);
-
-	} while (r > 0);
-
+    // Open destination file for writing, create if doesn't exist, truncate otherwise
+    to = open(argv[2], O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (to == -1)
+    {
+	    perror("Error opening destination file");
 	free(buffer);
 	close_file(from);
-	close_file(to);
+	exit(EXIT_FAILURE);
+    }
 
-	return (0);
+    // Copy contents from source file to destination file
+    do
+    {
+	    bytes_read = read(from, buffer, BUFFER_SIZE);
+	    if (bytes_read == -1)
+	{
+		perror("Error reading from source file")
+			free(buffer);
+	    close_file(from);
+	    close_file(to);
+	    exit(EXIT_FAILURE);
+	}
+
+	bytes_written = write(to, buffer, bytes_read);
+	if (bytes_written == -1 || bytes_written != bytes_read)
+	{
+		perror("Error writing to destination file");
+	    free(buffer);
+	    close_file(from);
+	    close_file(to);
+	    exit(EXIT_FAILURE);
+	}
+    } while (bytes_read > 0);
+
+    // Clean up and close files
+    // // free(buffer);
+    if (close(from) == -1 || close(to) == -1)
+    {
+	    perror("Error closing files");
+	    exit(EXIT_FAILURE);
+    }
+
+    return EXIT_SUCCESS;
 }
